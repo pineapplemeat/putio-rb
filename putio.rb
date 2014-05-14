@@ -28,11 +28,11 @@ module PutIo
       else
         result = Curl.get(url, params)
       end
-      
+
       begin
         json_result = JSON.parse(result.body_str)
       rescue JSON::ParserError => ex
-        raise "Problem parsing JSON (usually happens due to invalid request): #{result.body_str}"
+        raise "Problem parsing JSON (usually happens due to invalid request): #{result.body_str} #{result.header_str}"
       end
 
       validate_response(json_result)
@@ -51,6 +51,28 @@ module PutIo
       params = {:parent_id => parent_id }
       data = perform_request(url, :method => :get, :params => params)
       return data["files"].map do |f| File.new(f) end
+    end
+    
+    # Helper for files_download_mp4 and files_download
+    def files_download_common(id, download_mp4)
+      url = download_mp4 ? "#{@base_url}/files/#{id}/mp4/download" : "#{@base_url}/files/#{id}/download"
+      params = { :oauth_token => @oauth_token }
+      result = Curl.get(url, params)
+
+      response_headers = result.header_str
+      http_headers = Hash[response_headers.split(/[\r\n]+/).map.flat_map{ |s| s.scan(/^(\S+): (.+)/) }]
+
+      return http_headers["Location"]
+    end
+
+    # Return mp4 download link for specified file
+    def files_download_mp4(id)
+      return files_download_common(id, true)
+    end
+    
+    # Return regular download link for specified file
+    def files_download(id)
+      return files_download_common(id, false)
     end
 
     def files_convert_to_mp4(id)
