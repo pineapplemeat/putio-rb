@@ -28,8 +28,13 @@ module PutIo
       else
         result = Curl.get(url, params)
       end
+      
+      begin
+        json_result = JSON.parse(result.body_str)
+      rescue JSON::ParserError => ex
+        raise "Problem parsing JSON (usually happens due to invalid request): #{result.body_str}"
+      end
 
-      json_result = JSON.parse(result.body_str)
       validate_response(json_result)
       return json_result
     end
@@ -60,6 +65,7 @@ module PutIo
 
   end
   
+  # Simple wrapper for File object
   class File
     @@object_attrs = [:content_type,
                       :crc32,
@@ -80,9 +86,17 @@ module PutIo
         self.instance_variable_set("@#{attr}", data[attr.to_s])
       end
     end
+
+    def is_directory?
+      return self.content_type == "application/x-directory"
+    end
     
+    def is_video?
+      return self.content_type.start_with?("video/")
+    end
+
     def to_s
-      puts "<File #{self.name}; #{self.content_type}>"
+      "<File #{id} \"#{self.name}\"; #{self.content_type}>"
     end
   end
 end
